@@ -56,6 +56,7 @@ const ALLOWED_TABLES = [
   "key_functionaries",
   "admin_users",
   "password_reset_otps",
+  "auth_users",
 ];
 
 function escapeCSVValue(value: unknown): string {
