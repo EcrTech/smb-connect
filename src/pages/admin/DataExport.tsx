@@ -21,7 +21,7 @@ const EXPORTABLE_TABLES = [
   'whatsapp_lists', 'whatsapp_list_recipients',
   'analytics_events', 'audit_logs',
   'skills', 'work_experience', 'education', 'certifications',
-  'key_functionaries', 'admin_users', 'password_reset_otps',
+  'key_functionaries', 'admin_users', 'password_reset_otps', 'auth_users',
 ] as const;
 
 type TableName = typeof EXPORTABLE_TABLES[number];
