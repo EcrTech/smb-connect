@@ -1,23 +1,26 @@
 
 
-## Add `auth.users` Export to Data Export
+# Fix: Open Graph / Link Preview Showing Lovable Branding
 
-The `auth.users` table lives in a protected schema and can't be queried via `supabase.from('users')`. However, the Edge Function already uses the service role key, which has access to the admin auth API (`supabase.auth.admin.listUsers()`).
+## Problem
+In `index.html`, the OG and Twitter meta tags use Lovable's default image and Twitter handle:
+- `og:image` → `https://lovable.dev/opengraph-image-p98pqg.png` (Lovable logo)
+- `twitter:image` → same Lovable image
+- `twitter:site` → `@lovable_dev`
 
-### Plan
+This is why WhatsApp (and any social platform) shows the Lovable preview when sharing smbconnect.in.
 
-**1. Update Edge Function (`supabase/functions/export-table-csv/index.ts`)**
+## Fix in `index.html`
 
-- Add `"auth_users"` to the `ALLOWED_TABLES` array as a special-case identifier.
-- When `table === "auth_users"`, instead of querying a public table, use `supabaseAdmin.auth.admin.listUsers()` with pagination to fetch all users.
-- Map each user to a flat object with useful columns: `id`, `email`, `email_confirmed_at`, `phone`, `created_at`, `last_sign_in_at`, `updated_at`, plus any `user_metadata` fields (full_name, etc.).
-- Convert to CSV using the existing `convertToCSV` helper and return with the same headers.
+Update lines 19 and 22-23:
 
-**2. Update Frontend (`src/pages/admin/DataExport.tsx`)**
+1. **`og:image`** → Point to the SMB Connect logo at `/smb-connect-logo.png` (already exists in `public/`). Use the full absolute URL: `https://smbconnect.in/smb-connect-logo.png`
+2. **`twitter:image`** → Same absolute URL
+3. **`twitter:site`** → Update to SMB Connect's Twitter handle (or remove if none exists)
+4. **Add `og:url`** → `https://smbconnect.in`
 
-- Add `"auth_users"` to the table list shown in the UI so admins can select and export it like any other table.
+Note: After deploying, social platforms cache OG images. WhatsApp may take time to refresh. You can force re-scrape on Facebook via the [Sharing Debugger](https://developers.facebook.com/tools/debug/).
 
-### Security
-- Same admin-only gate applies — the function already verifies the caller is an active admin before proceeding.
-- The service role key is used server-side only; no client exposure.
+## Files Changed
+- `index.html` — update OG image URLs and Twitter handle
 

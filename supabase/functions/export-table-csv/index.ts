@@ -56,6 +56,7 @@ const ALLOWED_TABLES = [
   "key_functionaries",
   "admin_users",
   "password_reset_otps",
+  "auth_users",
 ];
 
 function escapeCSVValue(value: unknown): string {
@@ -147,20 +148,49 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch all rows using service role (bypasses RLS), paginated
+    // Fetch all rows
     let allData: Record<string, unknown>[] = [];
-    let from = 0;
-    const step = 1000;
-    while (true) {
-      const { data, error } = await supabaseAdmin
-        .from(table)
-        .select("*")
-        .range(from, from + step - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      allData = [...allData, ...data];
-      if (data.length < step) break;
-      from += step;
+
+    if (table === "auth_users") {
+      // Special case: use admin auth API to list all users
+      let page = 1;
+      const perPage = 1000;
+      while (true) {
+        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        if (error) throw error;
+        if (!users || users.length === 0) break;
+        for (const u of users) {
+          allData.push({
+            id: u.id,
+            email: u.email ?? "",
+            phone: u.phone ?? "",
+            email_confirmed_at: u.email_confirmed_at ?? "",
+            created_at: u.created_at ?? "",
+            updated_at: u.updated_at ?? "",
+            last_sign_in_at: u.last_sign_in_at ?? "",
+            full_name: (u.user_metadata as Record<string, unknown>)?.full_name ?? "",
+            first_name: (u.user_metadata as Record<string, unknown>)?.first_name ?? "",
+            last_name: (u.user_metadata as Record<string, unknown>)?.last_name ?? "",
+          });
+        }
+        if (users.length < perPage) break;
+        page++;
+      }
+    } else {
+      // Standard public table export with pagination
+      let from = 0;
+      const step = 1000;
+      while (true) {
+        const { data, error } = await supabaseAdmin
+          .from(table)
+          .select("*")
+          .range(from, from + step - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allData = [...allData, ...data];
+        if (data.length < step) break;
+        from += step;
+      }
     }
 
     // Convert to CSV
