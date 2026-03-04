@@ -31,8 +31,21 @@ function downloadBlob(blob: Blob, filename: string) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  // Delay revoking to let browser finish the download
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function countCSVRows(text: string): number {
+  if (!text || text.trim().length === 0) return 0;
+  // Remove BOM if present
+  const clean = text.replace(/^\uFEFF/, '');
+  const lines = clean.split('\n').filter(l => l.trim().length > 0);
+  // Subtract header row
+  return Math.max(0, lines.length - 1);
 }
 
 async function exportTableViaEdge(table: string): Promise<{ rowCount: number }> {
@@ -58,8 +71,20 @@ async function exportTableViaEdge(table: string): Promise<{ rowCount: number }> 
     throw new Error(err.error || `HTTP ${response.status}`);
   }
 
-  const rowCount = parseInt(response.headers.get('X-Row-Count') || '0', 10);
   const blob = await response.blob();
+  
+  // Try header first, fall back to counting CSV lines
+  let rowCount = parseInt(response.headers.get('X-Row-Count') || '0', 10);
+  if (rowCount === 0 && blob.size > 0) {
+    const text = await blob.text();
+    rowCount = countCSVRows(text);
+    // Re-create blob from text since .text() consumed it
+    const newBlob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+    const timestamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(newBlob, `${table}_${timestamp}.csv`);
+    return { rowCount };
+  }
+
   const timestamp = new Date().toISOString().slice(0, 10);
   downloadBlob(blob, `${table}_${timestamp}.csv`);
   return { rowCount };
