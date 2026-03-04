@@ -306,6 +306,10 @@ export default function AdminActions() {
                 <Rss className="w-4 h-4 mr-2" />
                 Member Feed
               </Button>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/admin/data-export')}>
+                <Database className="w-4 h-4 mr-2" />
+                Data Export
+              </Button>
             </div>
           </CardContent>
         </Card>
